@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- TCP/Ethernet connection parameters -->
+  <arg name="tcp_host" default="192.168.1.11" description="IP address of the Robotiq 3F gripper"/>
+  <arg name="tcp_port" default="502" description="TCP port (default 502 for Modbus TCP)"/>
+  <arg name="timeout_ms" default="500" description="Communication timeout in milliseconds"/>
+  <arg name="speed_for_gripper_action" default="1.0" description="Speed for gripper action (0.0-1.0)"/>
+  <arg name="pub_period_seconds" default="0.01" description="Publishing period in seconds"/>
+
+  <!-- Launch the gripper driver with TCP connection -->
+  <node pkg="robotiq_3f_driver" exec="robotiq_3f_driver_node" name="robotiq_3f_driver" output="screen">
+    <param name="connection_type" value="tcp"/>
+    <param name="tcp_host" value="$(var tcp_host)"/>
+    <param name="tcp_port" value="$(var tcp_port)"/>
+    <param name="timeout_ms" value="$(var timeout_ms)"/>
+    <param name="speed_for_gripper_action" value="$(var speed_for_gripper_action)"/>
+    <param name="pub_period_seconds" value="$(var pub_period_seconds)"/>
+  </node>
+
+  <!-- Robot state publisher for visualization -->
+  <node pkg="robot_state_publisher" exec="robot_state_publisher" name="robot_state_publisher">
+    <param name="robot_description" value="$(command 'xacro $(find-pkg-share robotiq_3f_description)/urdf/robotiq_3f_gripper.xacro')"/>
+  </node>
+
+</launch>
+

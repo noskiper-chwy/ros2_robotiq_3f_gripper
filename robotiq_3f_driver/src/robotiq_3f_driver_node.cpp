@@ -28,6 +28,7 @@
 
 #include <robotiq_3f_driver/default_driver.hpp>
 #include <robotiq_3f_driver/default_serial.hpp>
+#include <robotiq_3f_driver/modbus_tcp_serial.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/logging.hpp>
 #include <rclcpp_action/rclcpp_action.hpp>
@@ -110,14 +111,41 @@ public:
     // ROS params
     declare_parameter<double>("speed_for_gripper_action", 1.0);
     declare_parameter<double>("pub_period_seconds", 0.01);
+    declare_parameter<std::string>("port", "/dev/ttyUSB1");
+    declare_parameter<std::string>("connection_type", "serial");  // "serial" or "tcp"
+    declare_parameter<std::string>("tcp_host", "192.168.1.11");
+    declare_parameter<int>("tcp_port", 502);
+    declare_parameter<int>("baudrate", 115200);
+    declare_parameter<int>("timeout_ms", 500);
 
     speed_for_gripper_action_ = get_parameter("speed_for_gripper_action").as_double();
     pub_period_seconds_ = get_parameter("pub_period_seconds").as_double();
+    port_ = get_parameter("port").as_string();
+    std::string connection_type = get_parameter("connection_type").as_string();
+    std::string tcp_host = get_parameter("tcp_host").as_string();
+    int tcp_port = get_parameter("tcp_port").as_int();
+    int baudrate = get_parameter("baudrate").as_int();
+    int timeout_ms = get_parameter("timeout_ms").as_int();
 
-    auto serial = std::make_unique<DefaultSerial>();
-    serial->set_port("/dev/ttyUSB1");
-    serial->set_baudrate(115200);
-    serial->set_timeout(500ms);
+    std::unique_ptr<Serial> serial;
+    
+    if (connection_type == "tcp")
+    {
+      RCLCPP_INFO(kLogger, "Using TCP/Ethernet (Modbus TCP) connection to %s:%d", tcp_host.c_str(), tcp_port);
+          auto tcp_serial = std::make_unique<ModbusTcpSerial>(tcp_host, static_cast<uint16_t>(tcp_port));
+          tcp_serial->set_timeout(std::chrono::milliseconds(timeout_ms));
+          tcp_serial->set_unit_id(0x02);  // Modbus TCP uses Unit ID 0x02 per Robotiq manual section 4.8.1
+          serial = std::move(tcp_serial);
+    }
+    else
+    {
+      RCLCPP_INFO(kLogger, "Using Serial connection on port %s", port_.c_str());
+      auto usb_serial = std::make_unique<DefaultSerial>();
+      usb_serial->set_port(port_);
+      usb_serial->set_baudrate(static_cast<uint32_t>(baudrate));
+      usb_serial->set_timeout(std::chrono::milliseconds(timeout_ms));
+      serial = std::move(usb_serial);
+    }
 
     driver_ = std::make_unique<DefaultDriver>(std::move(serial));
     driver_->set_slave_address(0x09);
@@ -318,6 +346,7 @@ private:
   std::unique_ptr<DefaultDriver> driver_;
   double speed_for_gripper_action_;
   double pub_period_seconds_;
+  std::string port_;
 
   // These must be listed after the driver to ensure they are destroyed first, and all callbacks stop before
   // driver is destroyed.

@@ -196,13 +196,29 @@ void DefaultDriver::build_request_and_send(std::vector<uint8_t> regs, size_t con
 
 void DefaultDriver::wait_until_activated()
 {  // now wait until the activation is complete
+  auto const t0 = std::chrono::steady_clock::now();
+  constexpr double kActivationTimeout = 30.0;  // 30 second timeout
+  
   while (true)
   {
     auto status = get_full_status();
     if (status.gripper_status == GripperStatus::ACTIVATED)
     {
+      RCLCPP_INFO(kLogger, "Gripper activated successfully!");
       break;
     }
+    
+    // Check timeout
+    auto const t1 = std::chrono::steady_clock::now();
+    auto const dt = std::chrono::duration_cast<std::chrono::duration<double>>(t1 - t0).count();
+    if (dt > kActivationTimeout)
+    {
+      RCLCPP_ERROR(kLogger, "Activation timeout after %.1f seconds. Status: %d", dt, static_cast<int>(status.gripper_status));
+      throw DriverException{"Gripper activation timed out"};
+    }
+    
+    // Don't spam the gripper - give it time to activate
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
 }
 

@@ -39,6 +39,8 @@ add_library(
         include/robotiq_3f_driver/default_driver.hpp
         include/robotiq_3f_driver/default_driver_utils.hpp
         include/robotiq_3f_driver/default_serial.hpp
+        include/robotiq_3f_driver/tcp_serial.hpp
+        include/robotiq_3f_driver/modbus_tcp_serial.hpp
         include/robotiq_3f_driver/driver.hpp
         include/robotiq_3f_driver/driver_exception.hpp
         include/robotiq_3f_driver/serial.hpp
@@ -49,6 +51,8 @@ add_library(
         src/default_driver_utils.cpp
         src/fake/fake_driver.cpp
         src/default_serial.cpp
+        src/tcp_serial.cpp
+        src/modbus_tcp_serial.cpp
 )
 target_link_libraries(robotiq_3f_driver atomic)
 target_include_directories(
@@ -57,6 +61,8 @@ target_include_directories(
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
 )
+# Ensure position independent code is enabled for shared library
+set_target_properties(robotiq_3f_driver PROPERTIES POSITION_INDEPENDENT_CODE ON)
 ament_target_dependencies(
         robotiq_3f_driver
         ${THIS_PACKAGE_INCLUDE_DEPENDS}
